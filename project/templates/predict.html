@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% block title %}Price Prediction — Smart Crop Planning System{% endblock %}
+{% block page_title %}ML Price Prediction{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter Bar -->
+<form method="GET" action="{{ url_for('crops.predict') }}">
+    <div class="filter-bar">
+        <div class="form-group">
+            <label class="form-label">🌾 Crop</label>
+            <select name="crop" class="form-control" onchange="this.form.submit()">
+                {% for c in crops %}
+                <option value="{{ c }}" {% if c == selected_crop %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">☀️ Season</label>
+            <select name="season" class="form-control" onchange="this.form.submit()">
+                {% for s in seasons %}
+                <option value="{{ s }}" {% if s == selected_season %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">🗺️ Region</label>
+            <select name="district" class="form-control" onchange="this.form.submit()">
+                {% for d in districts %}
+                <option value="{{ d }}" {% if d == selected_district %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</form>
+
+<!-- Prediction Hero Card -->
+<div class="card" style="margin-bottom:24px;border-color:rgba(34,197,94,0.3);background:linear-gradient(135deg,rgba(34,197,94,0.06),rgba(132,204,22,0.04));">
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <div style="font-size:50px;">🤖</div>
+        <div style="flex:1;">
+            <div style="font-size:12px;letter-spacing:2px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-bottom:8px;">ML Prediction — {{ selected_season }} {{ "" }}</div>
+            <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;">{{ selected_crop }} in {{ selected_district }} District</div>
+        </div>
+        {% if single_price %}
+        <div style="text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Predicted Price</div>
+            <div style="font-size:46px;font-weight:900;color:var(--primary);font-family:'Outfit',sans-serif;line-height:1;">₹{{ single_price|int }}</div>
+            <div style="font-size:13px;color:var(--text-muted);">per quintal</div>
+        </div>
+        {% elif predict_error %}
+        <div class="alert alert-warning" style="margin:0;">
+            <span class="alert-icon">⚠️</span>
+            <div>{{ predict_error }}<br>
+            <a href="{{ url_for('crops.train') }}" class="btn btn-sm btn-primary" style="margin-top:8px;">Train Model Now</a></div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Chart: Historical + Predicted prices -->
+<div class="grid-2" style="margin-bottom:24px;">
+    <div class="card" style="grid-column: span 2;">
+        <div class="card-header">
+            <div>
+                <div class="card-title">📈 {{ selected_crop }} Price Trend — {{ selected_district }}</div>
+                <div class="card-subtitle">Historical prices from database + ML predictions for next 3 years</div>
+            </div>
+        </div>
+        <div class="chart-container" style="height:320px;">
+            <canvas id="priceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Future Predictions Table -->
+{% if future_preds %}
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header">
+        <div class="card-title">🔮 Future Price Forecasts</div>
+        <div class="card-subtitle">ML-generated predictions for upcoming years — {{ selected_crop }}, {{ selected_district }}</div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Season</th>
+                    <th>Predicted Price (₹/qtl)</th>
+                    <th>Trend</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pred in future_preds %}
+                <tr>
+                    <td><strong>{{ pred.year }}</strong></td>
+                    <td><span class="badge badge-info">{{ pred.season }}</span></td>
+                    <td style="font-weight:700;color:var(--primary);font-size:16px;">₹{{ pred.price | int }}</td>
+                    <td>
+                        {% if loop.index > 1 and future_preds[loop.index-2].price < pred.price %}
+                        <span style="color:var(--primary);">↑ Rising</span>
+                        {% elif loop.index > 1 %}
+                        <span style="color:var(--danger);">↓ Falling</span>
+                        {% else %}
+                        <span style="color:var(--text-muted);">— Baseline</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Crop Comparison Bar Chart -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">📊 All Crops Price Comparison</div>
+            <div class="card-subtitle">Predicted prices for {{ selected_season }} {{ "" }} — {{ selected_district }} district</div>
+        </div>
+    </div>
+    <div class="chart-container" style="height:300px;">
+        <canvas id="comparisonChart"></canvas>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+    // Build historical data from template
+    const historical = {{ historical | tojson }};
+    const futurePreds = {{ future_preds | tojson }};
+    
+    const histLabels = Object.keys(historical);
+    const histPrices = Object.values(historical);
+    
+    const futLabels = futurePreds.map(p => `${p.year} ${p.season}`);
+    const futPrices = futurePreds.map(p => p.price);
+    
+    const allLabels = [...histLabels, ...futLabels];
+    const cutIndex = histLabels.length;
+    
+    // Price trend chart
+    const priceCtx = document.getElementById('priceChart').getContext('2d');
+    
+    // Gradient fill for historical
+    const gradHist = priceCtx.createLinearGradient(0, 0, 0, 320);
+    gradHist.addColorStop(0, 'rgba(34,197,94,0.3)');
+    gradHist.addColorStop(1, 'rgba(34,197,94,0.0)');
+
+    const gradFut = priceCtx.createLinearGradient(0, 0, 0, 320);
+    gradFut.addColorStop(0, 'rgba(245,158,11,0.3)');
+    gradFut.addColorStop(1, 'rgba(245,158,11,0.0)');
+    
+    const histData = allLabels.map((l, i) => i < cutIndex ? histPrices[i] : null);
+    const futData  = allLabels.map((l, i) => i >= cutIndex ? futPrices[i - cutIndex] : null);
+    // Bridge the gap
+    if (cutIndex > 0 && futData.length > 0) {
+        futData[cutIndex - 1] = histPrices[cutIndex - 1];
+    }
+    
+    new Chart(priceCtx, {
+        type: 'line',
+        data: {
+            labels: allLabels,
+            datasets: [
+                {
+                    label: 'Historical Price',
+                    data: histData,
+                    borderColor: '#22c55e',
+                    backgroundColor: gradHist,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#22c55e',
+                    pointRadius: 4,
+                    tension: 0.4,
+                    fill: true,
+                    spanGaps: false
+                },
+                {
+                    label: 'ML Predicted Price',
+                    data: futData,
+                    borderColor: '#f59e0b',
+                    backgroundColor: gradFut,
+                    borderWidth: 2.5,
+                    borderDash: [6, 4],
+                    pointBackgroundColor: '#f59e0b',
+                    pointRadius: 5,
+                    tension: 0.4,
+                    fill: true,
+                    spanGaps: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { ticks: { color: '#86efac', font:{ size:10 }, maxRotation: 45 }, grid: { color:'rgba(34,197,94,0.07)' } },
+                y: { ticks: { color: '#86efac', font:{ size:11 }, callback: v => '₹'+v }, grid: { color:'rgba(34,197,94,0.07)' }, beginAtZero: false }
+            },
+            plugins: {
+                legend: { labels: { color: '#f0fdf4', font:{ size:12 }, padding:16 } },
+                tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ₹${ctx.parsed.y?.toFixed(0) ?? '—'}` } }
+            }
+        }
+    });
+
+    // Load comparison chart via API
+    fetch(`/api/predictions?season={{ selected_season }}&region={{ selected_region }}&year=${new Date().getFullYear()}`)
+        .then(r => r.json())
+        .then(data => {
+            const palette = ['#22c55e','#84cc16','#f59e0b','#f87171','#60a5fa','#a78bfa','#fb923c','#34d399','#fbbf24','#4ade80'];
+            new Chart(document.getElementById('comparisonChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Predicted Price (₹/qtl)',
+                        data: data.prices,
+                        backgroundColor: palette,
+                        borderColor: palette,
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color:'#86efac', font:{ size:11 } }, grid: { color:'rgba(34,197,94,0.07)' } },
+                        y: { ticks: { color:'#86efac', callback: v => '₹'+Math.round(v) }, grid: { color:'rgba(34,197,94,0.07)' }, beginAtZero: false }
+                    },
+                    plugins: { legend: { display:false }, tooltip: { callbacks: { label: (ctx) => ` ₹${ctx.parsed.y.toFixed(0)}` } } }
+                }
+            });
+        });
+})();
+</script>
+{% endblock %}

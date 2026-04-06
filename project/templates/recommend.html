@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% block title %}AI Crop Recommendations - Smart Crop Planning System{% endblock %}
+{% block page_title %}AI Crop Recommendations{% endblock %}
+
+{% block content %}
+<form method="GET" action="{{ url_for('crops.recommend') }}" class="filter-bar" style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
+    <div style="flex:1;min-width:160px;">
+        <label class="form-label">Village</label>
+        <select name="village" class="form-control">
+            {% if village and village not in villages %}
+            <option value="{{ village }}" selected>{{ village }}</option>
+            {% endif %}
+            {% for v in villages %}
+            <option value="{{ v }}" {% if v == village %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div style="flex:1;min-width:140px;">
+        <label class="form-label">Season</label>
+        <select name="season" class="form-control">
+            {% for s in seasons %}
+            <option value="{{ s }}" {% if s == season %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div style="flex:1;min-width:160px;">
+        <label class="form-label">District</label>
+        <select name="district" class="form-control">
+            {% for d in districts %}
+            <option value="{{ d }}" {% if d == district %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div style="flex:1;min-width:140px;">
+        <label class="form-label">Soil Type</label>
+        <select name="soil" class="form-control">
+            {% for st in soil_types %}
+            <option value="{{ st }}" {% if st == soil_type %}selected{% endif %}>{{ st }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div style="flex:1;min-width:140px;">
+        <label class="form-label">Water Availability</label>
+        <select name="water" class="form-control">
+            {% for w in water_levels %}
+            <option value="{{ w }}" {% if w == water_avail %}selected{% endif %}>{{ w }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn btn-primary">Get AI Suggestion</button>
+        <a href="{{ url_for('crops.recommend') }}" class="btn btn-outline">Reset</a>
+    </div>
+</form>
+
+<div class="alert alert-info" style="margin-bottom:24px;">
+    <span class="alert-icon">AI</span>
+    <div class="alert-content">
+        <strong>Temporary recommendation for {{ village }} - {{ season }}</strong>
+        Enter village, soil, and water details above. The system does not save this input and directly suggests the best 1-2 crops based on local oversupply risk and district demand.
+    </div>
+</div>
+
+{% if recommendations %}
+<div class="card" style="margin-bottom:24px; background:rgba(34,197,94,0.05); border:1px solid rgba(34,197,94,0.2);">
+    <div class="card-title" style="color:var(--primary);">Top Crops To Cultivate Now</div>
+    <div class="card-subtitle">Best picks for {{ village }} after checking oversupply, demand, season, soil, and water suitability.</div>
+
+    {% if recommendations.best_choices %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px;margin-top:18px;">
+        {% for rec in recommendations.best_choices %}
+        <div class="rec-row" style="background:rgba(34,197,94,0.05);border:1px solid rgba(34,197,94,0.18);padding:18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="rec-icon">{{ rec.icon }}</div>
+                    <div>
+                        <div style="font-weight:700;font-size:18px;color:#fff;">{{ rec.crop }}</div>
+                        <div style="font-size:12px;color:var(--text-muted);">{{ rec.duration }} • {{ rec.water_need }} Water</div>
+                    </div>
+                </div>
+                <span class="badge badge-{{ rec.risk_class }}">{{ rec.risk }}</span>
+            </div>
+            <div style="margin-top:14px;font-size:20px;font-weight:700;color:var(--primary);">{{ rec.price_formatted }}<span style="font-size:12px;color:var(--text-dim);font-weight:400;"> /qtl</span></div>
+            <div style="margin-top:8px;font-size:13px;color:var(--text-dim);">Demand Index: <strong style="color:var(--text);">{{ rec.demand_index }}</strong></div>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                {% for reason in rec.why %}
+                <span class="badge badge-success">{{ reason }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--text-dim);padding-top:16px;">No direct suggestions are available for the selected temporary inputs.</div>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-bottom:24px; background:rgba(34,197,94,0.05); border:1px solid rgba(34,197,94,0.2);">
+    <div style="font-weight:700; color:var(--primary); font-size:16px; margin-bottom:12px;">Profit Calculator</div>
+    <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+        <label style="color:var(--text-dim); font-size:14px;">Expected Land Area (Acres):</label>
+        <input type="number" id="land-area" class="form-control" placeholder="e.g. 5" value="1" min="0.1" step="0.1" style="max-width:120px;" oninput="calculateProfits()">
+        <div style="font-size:12px; color:var(--text-muted);">Enter land size to see estimated yield and gross value instantly.</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:20px;margin-top:20px;">
+    <div class="card" style="border-left:4px solid #ef4444;">
+        <div class="card-title" style="color:#ef4444;">Crops To Avoid</div>
+        <div class="card-subtitle">These crops are already over-cultivated in the selected village context.</div>
+
+        {% if recommendations.risk_crops %}
+            {% for rec in recommendations.risk_crops %}
+            <div class="rec-row" style="flex-direction:column; align-items:stretch;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div class="rec-icon" style="background:#551c1c;color:#fca5a5;">{{ rec.icon }}</div>
+                        <div>
+                            <div style="font-weight:700;font-size:16px;">{{ rec.crop }}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">{{ rec.duration }} • {{ rec.water_need }} Water</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="badge badge-{{ rec.risk_class }}">{{ rec.risk }}</span>
+                        <div style="font-weight:700;color:var(--text);margin-top:4px;">{{ rec.price_formatted }}/qtl</div>
+                    </div>
+                </div>
+                <div class="profit-calc-row" data-price="{{ rec.predicted_price }}" data-yield="{{ rec.yield_per_acre }}" style="background:rgba(0,0,0,0.2); padding:8px 12px; border-radius:6px; display:flex; justify-content:space-between; font-size:13px; color:var(--text-dim);">
+                    <span>Yield: <strong class="calc-yield" style="color:var(--text);">--</strong></span>
+                    <span>Gross Value: <strong class="calc-profit" style="color:var(--danger);">--</strong></span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="color:var(--text-dim);margin-top:16px;text-align:center;">No over-cultivated crops found for this selection.</div>
+        {% endif %}
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--primary);">
+        <div class="card-title" style="color:var(--primary);">Suggested Alternatives</div>
+        <div class="card-subtitle">Lower oversupply-risk crops that fit the selected temporary input.</div>
+
+        {% if recommendations.alternatives %}
+            {% for rec in recommendations.alternatives %}
+            <div class="rec-row" style="background:rgba(34,197,94,0.03); flex-direction:column; align-items:stretch;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div class="rec-icon">{{ rec.icon }}</div>
+                        <div>
+                            <div style="font-weight:700;font-size:16px;color:#fff;">{{ rec.crop }}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">{{ rec.duration }} • {{ rec.water_need }} Water</div>
+                            <span class="badge badge-{{ rec.risk_class }}" style="margin-top:4px;">{{ rec.risk }}</span>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:700;color:var(--primary);font-size:18px;">{{ rec.price_formatted }}<span style="font-size:11px;color:var(--text-dim);font-weight:normal;">/qtl</span></div>
+                        <a href="{{ url_for('crops.predict') }}?crop={{ rec.crop }}&season={{ season }}&district={{ district }}" style="color:var(--text-dim);font-size:12px;text-decoration:none;">Chart -></a>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;">
+                    {% for reason in rec.why %}
+                    <span class="badge badge-success">{{ reason }}</span>
+                    {% endfor %}
+                </div>
+                <div class="profit-calc-row" data-price="{{ rec.predicted_price }}" data-yield="{{ rec.yield_per_acre }}" style="background:rgba(34,197,94,0.1); padding:8px 12px; border-radius:6px; display:flex; justify-content:space-between; font-size:13px; color:var(--text-dim);">
+                    <span>Yield: <strong class="calc-yield" style="color:var(--text);">--</strong></span>
+                    <span>Gross Value: <strong class="calc-profit" style="color:var(--primary);">--</strong></span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="color:var(--text-dim);padding:24px;text-align:center;">
+                No suitable alternative crops were found for {{ soil_type }} soil with {{ water_avail }} water in this season.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-state-icon">AI</div>
+        <div class="empty-state-title">No recommendations available</div>
+        <div class="empty-state-text">
+            The model may need training first, or no suitable crops matched the selected temporary inputs.
+        </div>
+        <a href="{{ url_for('crops.train') }}" class="btn btn-primary" style="margin-top:16px;">Train ML Model</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function calculateProfits() {
+    const areaInput = document.getElementById('land-area');
+    if (!areaInput) return;
+
+    let area = parseFloat(areaInput.value);
+    if (isNaN(area) || area <= 0) area = 0;
+
+    const formatCurrency = (num) => {
+        return "Rs " + num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    };
+
+    document.querySelectorAll('.profit-calc-row').forEach(row => {
+        const price = parseFloat(row.getAttribute('data-price')) || 0;
+        const yieldPerAcre = parseFloat(row.getAttribute('data-yield')) || 0;
+
+        const yieldElem = row.querySelector('.calc-yield');
+        const profitElem = row.querySelector('.calc-profit');
+
+        if (area > 0) {
+            const totalYield = area * yieldPerAcre;
+            const totalProfit = totalYield * price;
+
+            yieldElem.textContent = totalYield.toFixed(1) + " qtl";
+            profitElem.textContent = formatCurrency(totalProfit);
+        } else {
+            yieldElem.textContent = "--";
+            profitElem.textContent = "--";
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', calculateProfits);
+</script>
+{% endblock %}

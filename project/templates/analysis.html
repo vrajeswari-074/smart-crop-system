@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% block title %}Crop Analysis — Smart Crop Planning System{% endblock %}
+{% block page_title %}Crop Distribution Analysis{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter Bar -->
+<form method="GET" action="{{ url_for('crops.analysis') }}">
+    <div class="filter-bar">
+        <div class="form-group">
+            <label class="form-label">🏘️ Village</label>
+            <select name="village" class="form-control" onchange="this.form.submit()">
+                {% if villages %}
+                    {% for v in villages %}
+                    <option value="{{ v }}" {% if v == village %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                {% else %}
+                    <option value="{{ village }}">{{ village }}</option>
+                {% endif %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">☀️ Season</label>
+            <select name="season" class="form-control" onchange="this.form.submit()">
+                {% for s in seasons %}
+                <option value="{{ s }}" {% if s == season %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">📅 Year</label>
+            <select name="year" class="form-control" onchange="this.form.submit()">
+                {% for y in years %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="flex:0;">
+            <label class="form-label">&nbsp;</label>
+            <a href="{{ url_for('crops.submit') }}" class="btn btn-primary">+ Add Entry</a>
+        </div>
+    </div>
+</form>
+
+<!-- Village Stats -->
+{% if village_stats %}
+<div class="stats-grid" style="margin-bottom:24px;">
+    <div class="stat-card">
+        <div class="stat-icon green">🌾</div>
+        <div class="stat-value" style="color:var(--primary);">{{ village_stats.unique_crops }}</div>
+        <div class="stat-label">Unique Crops</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon amber">📐</div>
+        <div class="stat-value" style="color:var(--accent-warm);">{{ village_stats.total_area }}</div>
+        <div class="stat-label">Total Acres</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue">👨‍🌾</div>
+        <div class="stat-value" style="color:#60a5fa;">{{ village_stats.total_farmers }}</div>
+        <div class="stat-label">Farmers</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Charts -->
+{% if distribution %}
+<div class="grid-2" style="margin-bottom:24px;">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">🥧 Crop Share — {{ village }}</div>
+                <div class="card-subtitle">{{ season }} {{ year }} distribution by area</div>
+            </div>
+        </div>
+        <div class="chart-container" style="height:280px;">
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">📊 Area by Crop (Acres)</div>
+                <div class="card-subtitle">{{ village }} — {{ season }} {{ year }}</div>
+            </div>
+        </div>
+        <div class="chart-container" style="height:280px;">
+            <canvas id="barChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Demand vs Supply Analysis Module -->
+{% if demand_supply_metrics %}
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header">
+        <div>
+            <div class="card-title">⚖️ Demand vs Supply Analysis</div>
+            <div class="card-subtitle">Comparing local production constraints against market demand indices</div>
+        </div>
+    </div>
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom:1px solid var(--border); color:var(--text-dim); font-family:'Outfit', sans-serif;">
+                    <th style="padding:12px;">Crop</th>
+                    <th style="padding:12px;">Local Supply Area</th>
+                    <th style="padding:12px;">Market Demand Index</th>
+                    <th style="padding:12px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in demand_supply_metrics %}
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                    <td style="padding:12px; font-weight:bold; color:var(--text);">{{ row.crop }}</td>
+                    <td style="padding:12px; color:var(--text-dim);">{{ row.supply_area }} acres <span style="font-size:11px;">({{ row.supply_pct }}%)</span></td>
+                    <td style="padding:12px; color:var(--text-dim);">
+                        {{ row.demand_index }}
+                        <span style="display:inline-block; margin-left:8px; width:40px; height:6px; background-color:var(--border); border-radius:4px; overflow:hidden;">
+                            <span style="display:block; height:100%; width:{{ (row.demand_index / 2) * 100 }}%; background-color:var(--primary);"></span>
+                        </span>
+                    </td>
+                    <td style="padding:12px;">
+                        <span class="badge badge-{{ row.status_color }}">{{ row.status }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Over-cultivation Analysis -->
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header">
+        <div>
+            <div class="card-title">🚨 Over-cultivation Detection</div>
+            <div class="card-subtitle">Crops exceeding 40% of village area are flagged as over-cultivated</div>
+        </div>
+        <a href="{{ url_for('crops.recommend') }}?village={{ village }}&season={{ season }}&region={{ current_user.region }}"
+           class="btn btn-primary btn-sm">Get Recommendations →</a>
+    </div>
+
+    {% if flagged %}
+    {% for f in flagged %}
+    <div class="overcultivation-bar {% if f.over_cultivated %}danger{% elif f.percentage > 25 %}warning{% else %}safe{% endif %}">
+        <span class="oc-crop">{{ f.crop }}</span>
+        <div class="oc-bar-track">
+            <div class="oc-bar-fill {% if f.over_cultivated %}danger{% elif f.percentage > 25 %}warning{% else %}success{% endif %}"
+                 style="width:{{ [f.percentage, 100] | min }}%"></div>
+        </div>
+        <span class="oc-pct" style="color:{% if f.over_cultivated %}var(--danger){% elif f.percentage > 25 %}var(--warning){% else %}var(--primary){% endif %}">
+            {{ f.percentage }}%
+        </span>
+        {% if f.over_cultivated %}
+        <span class="badge badge-danger">⚠️ Over-cultivated</span>
+        {% elif f.percentage > 25 %}
+        <span class="badge badge-warning">⚡ Moderate</span>
+        {% else %}
+        <span class="badge badge-success">✓ Safe</span>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if flagged | selectattr('over_cultivated') | list %}
+    <div class="alert alert-danger" style="margin-top:16px;">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-content">
+            <strong>Over-cultivation Detected!</strong>
+            {{ flagged | selectattr('over_cultivated') | list | length }} crop(s) in {{ village }} are being over-cultivated this season.
+            This may lead to price drops and financial loss. Consider switching to alternative crops.
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty-state" style="padding:30px 0;">
+        <div class="empty-state-icon">📭</div>
+        <div class="empty-state-title">No data for this combination</div>
+        <div class="empty-state-text">Try a different village, season, or year filter.</div>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-state-icon">🌱</div>
+        <div class="empty-state-title">No crop data for {{ village }} — {{ season }} {{ year }}</div>
+        <div class="empty-state-text">Submit crop entries for this village and season to see analytics.</div>
+        <a href="{{ url_for('crops.submit') }}" class="btn btn-primary" style="margin-top:16px;">Submit Crop Data</a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+{% if distribution %}
+<script>
+(function() {
+    const labels  = {{ distribution | map(attribute='crop') | list | tojson }};
+    const data    = {{ distribution | map(attribute='area') | list | tojson }};
+    const palette = ['#22c55e','#84cc16','#f59e0b','#f87171','#60a5fa','#a78bfa','#fb923c','#34d399','#fbbf24','#4ade80'];
+
+    // Pie chart
+    new Chart(document.getElementById('pieChart'), {
+        type: 'pie',
+        data: { labels, datasets: [{ data, backgroundColor: palette.slice(0, labels.length), borderColor:'rgba(0,0,0,0.3)', borderWidth:1, hoverOffset:8 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position:'right', labels: { color:'#f0fdf4', font:{ size:12 }, padding:12 } },
+                tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed.toFixed(1)} acres` } }
+            }
+        }
+    });
+
+    // Bar chart
+    new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Total Area (acres)',
+                data,
+                backgroundColor: palette.slice(0, labels.length).map(c => c + 'cc'),
+                borderColor: palette.slice(0, labels.length),
+                borderWidth: 1.5,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color:'#86efac', font:{ size:11 } }, grid: { color:'rgba(34,197,94,0.07)' } },
+                y: { ticks: { color:'#86efac', font:{ size:11 } }, grid: { color:'rgba(34,197,94,0.07)' }, beginAtZero: true }
+            },
+            plugins: {
+                legend: { display:false },
+                tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.y.toFixed(1)} acres` } }
+            }
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — Smart Crop Planning System</title>
+    <meta name="description" content="Sign in to the Smart Crop Planning System to access crop analytics, price predictions, and AI recommendations.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+</head>
+<body>
+<div class="auth-bg"></div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container" id="flashContainer">
+    {% for category, message in messages %}
+    <div class="flash-msg {{ category }}" onclick="this.remove()">
+        <span>{% if category == 'success' %}✅{% elif category == 'error' %}❌{% elif category == 'warning' %}⚠️{% else %}ℹ️{% endif %}</span>
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <div class="logo-icon">🌱</div>
+            <h1 class="auth-title">Welcome Back</h1>
+            <p class="auth-subtitle">Sign in to your farming intelligence dashboard</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+            <div class="form-group">
+                <label class="form-label" for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-control"
+                       placeholder="farmer@example.com" required autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control"
+                       placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+                <input type="checkbox" id="remember" name="remember"
+                       style="width:16px;height:16px;accent-color:var(--primary);">
+                <label for="remember" style="font-size:13px;color:var(--text-muted);cursor:pointer;">
+                    Remember me for 30 days
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">
+                Sign In →
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            Don't have an account?
+            <a href="{{ url_for('auth.register') }}">Create one free</a>
+        </div>
+
+        <!-- Demo hint -->
+        <div style="margin-top:20px;padding:14px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:10px;font-size:12px;color:var(--text-muted);text-align:center;">
+            🌾 <strong>Sign up</strong> to start entering your crop data and get AI-powered recommendations
+        </div>
+    </div>
+</div>
+
+<script>
+setTimeout(() => {
+    const c = document.getElementById('flashContainer');
+    if(c) { const m = c.querySelectorAll('.flash-msg'); m.forEach((el,i) => setTimeout(() => el.remove(), 4000 + i*200)); }
+}, 0);
+</script>
+</body>
+</html>

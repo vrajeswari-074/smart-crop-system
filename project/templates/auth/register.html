@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — Smart Crop Planning System</title>
+    <meta name="description" content="Create your farmer account to access crop analytics, price predictions, and AI-powered crop recommendations.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+</head>
+<body>
+<div class="auth-bg"></div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container" id="flashContainer">
+    {% for category, message in messages %}
+    <div class="flash-msg {{ category }}" onclick="this.remove()">
+        <span>{% if category == 'success' %}✅{% elif category == 'error' %}❌{% else %}ℹ️{% endif %}</span>
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="auth-page">
+    <div class="auth-card" style="max-width:520px;">
+        <div class="auth-logo">
+            <div class="logo-icon">🌱</div>
+            <h1 class="auth-title">Create Account</h1>
+            <p class="auth-subtitle">Join thousands of smart farmers making data-driven decisions</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.register') }}" id="registerForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="username">Username</label>
+                    <input type="text" id="username" name="username" class="form-control"
+                           placeholder="farmer_ravi" required minlength="3" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="email">Email</label>
+                    <input type="email" id="email" name="email" class="form-control"
+                           placeholder="you@example.com" required autocomplete="email">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label" for="district">District</label>
+                    <select id="district" name="district" class="form-control" required></select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label" for="mandal">Mandal</label>
+                    <select id="mandal" name="mandal" class="form-control" required></select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label" for="village">Village</label>
+                    <select id="village" name="village" class="form-control" required></select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control"
+                           placeholder="Min. 6 characters" required minlength="6" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="confirm_password">Confirm Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-control"
+                           placeholder="Repeat password" required autocomplete="new-password">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:8px;">
+                Create My Account →
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            Already have an account?
+            <a href="{{ url_for('auth.login') }}">Sign in</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const districtSelect = document.getElementById('district');
+    const mandalSelect = document.getElementById('mandal');
+    const villageSelect = document.getElementById('village');
+
+    function populateSelect(selectElem, options) {
+        selectElem.innerHTML = '';
+        if(options.length === 0) {
+            selectElem.innerHTML = '<option value="">-- None --</option>';
+            return;
+        }
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            selectElem.appendChild(option);
+        });
+    }
+
+    async function loadDistricts() {
+        districtSelect.innerHTML = '<option>Loading...</option>';
+        const res = await fetch('/api/locations/districts');
+        const data = await res.json();
+        populateSelect(districtSelect, data);
+        districtSelect.dispatchEvent(new Event('change'));
+    }
+
+    districtSelect.addEventListener('change', async () => {
+        mandalSelect.innerHTML = '<option>Loading...</option>';
+        villageSelect.innerHTML = '<option>Loading...</option>';
+        const d = districtSelect.value;
+        if (!d) return;
+        const res = await fetch(`/api/locations/mandals?district=${d}`);
+        const data = await res.json();
+        populateSelect(mandalSelect, data);
+        mandalSelect.dispatchEvent(new Event('change'));
+    });
+
+    mandalSelect.addEventListener('change', async () => {
+        const d = districtSelect.value;
+        const m = mandalSelect.value;
+        if (!m) return;
+        villageSelect.innerHTML = '<option>Loading...</option>';
+        const res = await fetch(`/api/locations/villages?district=${d}&mandal=${m}`);
+        const data = await res.json();
+        populateSelect(villageSelect, data);
+    });
+
+    // Init
+    loadDistricts();
+
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const pw = document.getElementById('password').value;
+    const cpw = document.getElementById('confirm_password').value;
+    if (pw !== cpw) {
+        e.preventDefault();
+        alert('Passwords do not match!');
+    }
+});
+setTimeout(() => {
+    const c = document.getElementById('flashContainer');
+    if(c) { c.querySelectorAll('.flash-msg').forEach((el) => setTimeout(() => el.remove(), 4000)); }
+}, 0);
+</script>
+</body>
+</html>

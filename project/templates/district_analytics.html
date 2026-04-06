@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}District Analytics — Smart Crop Planning System{% endblock %}
+{% block page_title %}District Analytics{% endblock %}
+
+{% block content %}
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="card">
+    <div class="card-header" style="flex-wrap:wrap;">
+        <div>
+            <div class="card-title">📊 Historical Crop Prices</div>
+            <div class="card-subtitle">Aggregated metrics for {{ district }} District</div>
+        </div>
+    </div>
+
+    {% if district_data %}
+    <div style="background:var(--bg-panel);padding:24px;border-radius:14px;border:1px solid var(--border);margin-bottom:24px;">
+        <canvas id="districtChart" height="120"></canvas>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="card" style="box-shadow:none;">
+            <div style="font-weight:700;margin-bottom:8px;color:var(--text);font-family:'Outfit',sans-serif;">Most Cultivated Crops (Historically)</div>
+            <div style="color:var(--text-dim);font-size:13px;">Based on recorded metrics, these are consistently planted heavily across all seasons. Check recommendation page to avoid oversupply traps.</div>
+        </div>
+        <div class="card" style="box-shadow:none;">
+            <div style="font-weight:700;margin-bottom:8px;color:var(--text);font-family:'Outfit',sans-serif;">Price Stability</div>
+            <div style="color:var(--text-dim);font-size:13px;">Observe the trends above to find crops that resist seasonal volatility.</div>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('districtChart').getContext('2d');
+        const data = {{ district_data | tojson | safe }};
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#9ca3af', font: { family: 'Inter' } }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#1f2937',
+                        titleColor: '#fff',
+                        bodyColor: '#e5e7eb',
+                        borderColor: '#374151',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#9ca3af' }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#9ca3af', callback: function(value){ return '₹'+value; } }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+    </script>
+    {% else %}
+    <div style="padding:40px 20px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:16px;">📉</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:8px;">No Data Available</div>
+        <div style="color:var(--text-dim);">There is currently no price history recorded for the {{ district }} district.</div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
