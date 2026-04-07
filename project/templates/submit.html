@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
-{% block title %}Submit Crop Data — Smart Crop Planning System{% endblock %}
+{% block title %}Submit Crop Data - Smart Crop Planning System{% endblock %}
 {% block page_title %}Submit Crop Data{% endblock %}
 
 {% block content %}
 
-<div style="max-width:700px;margin:0 auto;">
+<div class="page-shell">
     <div class="card">
         <div class="card-header">
             <div>
@@ -13,48 +13,43 @@
             </div>
         </div>
 
-        <!-- Progress Steps -->
-        <div style="display:flex;gap:0;margin-bottom:32px;position:relative;">
-            <div style="position:absolute;top:18px;left:10%;right:10%;height:2px;background:var(--border);z-index:0;"></div>
-            {% for step, label in [('1','Village'), ('2','Crop'), ('3','Details'), ('4','Confirm')] %}
-            <div style="flex:1;text-align:center;position:relative;z-index:1;" id="stepIndicator{{ step }}">
-                <div style="width:36px;height:36px;border-radius:50%;background:{% if loop.index == 1 %}var(--primary){% else %}var(--bg-card){% endif %};border:2px solid {% if loop.index == 1 %}var(--primary){% else %}var(--border){% endif %};display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:13px;font-weight:700;color:{% if loop.index == 1 %}#000{% else %}var(--text-dim){% endif %};" id="stepNum{{ step }}">{{ step }}</div>
-                <div style="font-size:11px;color:var(--text-dim);font-weight:500;" id="stepLabel{{ step }}">{{ label }}</div>
+        <div class="stepper">
+            {% for step, label in [('1', 'Village'), ('2', 'Crop'), ('3', 'Details'), ('4', 'Confirm')] %}
+            <div class="step-indicator" id="stepIndicator{{ step }}">
+                <div class="step-number" style="background:{% if loop.index == 1 %}var(--primary){% else %}var(--bg-card){% endif %};border:2px solid {% if loop.index == 1 %}var(--primary){% else %}var(--border){% endif %};color:{% if loop.index == 1 %}#000{% else %}var(--text-dim){% endif %};" id="stepNum{{ step }}">{{ step }}</div>
+                <div class="step-label" id="stepLabel{{ step }}">{{ label }}</div>
             </div>
             {% endfor %}
         </div>
 
         <form method="POST" action="{{ url_for('crops.submit') }}" id="cropForm">
-
-            <!-- Step 1: Village Info -->
             <div id="step1" class="form-step">
                 <div class="form-row">
-                    <div class="form-group" style="flex:1;">
+                    <div class="form-group">
                         <label class="form-label" for="district">District</label>
                         <select id="district" name="district" class="form-control" required></select>
                     </div>
-                    <div class="form-group" style="flex:1;">
+                    <div class="form-group">
                         <label class="form-label" for="mandal">Mandal</label>
                         <select id="mandal" name="mandal" class="form-control" required></select>
                     </div>
                 </div>
                 <div class="form-row" style="margin-top:12px;">
-                    <div class="form-group" style="flex:1;">
+                    <div class="form-group">
                         <label class="form-label" for="village">📍 Village Name</label>
                         <select id="village" name="village" class="form-control" required></select>
                     </div>
                 </div>
-                <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                <div class="action-row end">
                     <button type="button" class="btn btn-primary" onclick="nextStep(1)">Next: Select Crop →</button>
                 </div>
             </div>
 
-            <!-- Step 2: Crop Selection -->
             <div id="step2" class="form-step" style="display:none;">
                 <div class="form-group">
                     <label class="form-label">🌾 Select Crop</label>
                     <div class="crop-grid" id="cropGrid">
-                        {% set crop_icons = {'Wheat':'🌾','Rice':'🌾','Maize':'🌽','Tomato':'🍅','Onion':'🧅','Potato':'🥔','Cotton':'🌿','Soybean':'🫘','Sugarcane':'🎋','Barley':'🌾'} %}
+                        {% set crop_icons = {'Wheat': '🌾', 'Rice': '🌾', 'Maize': '🌽', 'Tomato': '🍅', 'Onion': '🧅', 'Potato': '🥔', 'Cotton': '🌿', 'Soybean': '🫘', 'Sugarcane': '🎋', 'Barley': '🌾'} %}
                         {% for crop in crops %}
                         <div class="crop-option" data-crop="{{ crop }}" onclick="selectCrop('{{ crop }}')">
                             <span style="font-size:28px;">{{ crop_icons.get(crop, '🌱') }}</span>
@@ -64,13 +59,12 @@
                     </div>
                     <input type="hidden" id="crop_name" name="crop_name" required>
                 </div>
-                <div style="display:flex;justify-content:space-between;margin-top:8px;">
+                <div class="action-row">
                     <button type="button" class="btn btn-outline" onclick="prevStep(2)">← Back</button>
                     <button type="button" class="btn btn-primary" onclick="nextStep(2)">Next: Fill Details →</button>
                 </div>
             </div>
 
-            <!-- Step 3: Details -->
             <div id="step3" class="form-step" style="display:none;">
                 <div class="form-row">
                     <div class="form-group">
@@ -95,26 +89,25 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div style="display:flex;justify-content:space-between;margin-top:8px;">
+                <div class="action-row">
                     <button type="button" class="btn btn-outline" onclick="prevStep(3)">← Back</button>
                     <button type="button" class="btn btn-primary" onclick="nextStep(3)">Review →</button>
                 </div>
             </div>
 
-            <!-- Step 4: Confirm -->
             <div id="step4" class="form-step" style="display:none;">
-                <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:14px;padding:24px;margin-bottom:20px;">
+                <div class="review-card">
                     <h3 style="font-family:'Outfit',sans-serif;margin-bottom:16px;font-size:16px;">Review Your Entry</h3>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">VILLAGE</div><div id="rev_village" style="font-weight:600;">—</div></div>
-                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">DISTRICT</div><div id="rev_district" style="font-weight:600;">—</div></div>
-                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">CROP</div><div id="rev_crop" style="font-weight:600;color:var(--primary);">—</div></div>
-                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">AREA</div><div id="rev_area" style="font-weight:600;">—</div></div>
-                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">SEASON</div><div id="rev_season" style="font-weight:600;">—</div></div>
-                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">YEAR</div><div id="rev_year" style="font-weight:600;">—</div></div>
+                    <div class="review-grid">
+                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">VILLAGE</div><div id="rev_village" style="font-weight:600;">-</div></div>
+                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">DISTRICT</div><div id="rev_district" style="font-weight:600;">-</div></div>
+                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">CROP</div><div id="rev_crop" style="font-weight:600;color:var(--primary);">-</div></div>
+                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">AREA</div><div id="rev_area" style="font-weight:600;">-</div></div>
+                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">SEASON</div><div id="rev_season" style="font-weight:600;">-</div></div>
+                        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">YEAR</div><div id="rev_year" style="font-weight:600;">-</div></div>
                     </div>
                 </div>
-                <div style="display:flex;justify-content:space-between;">
+                <div class="action-row">
                     <button type="button" class="btn btn-outline" onclick="prevStep(4)">← Edit</button>
                     <button type="submit" class="btn btn-primary btn-lg">✅ Submit Crop Entry</button>
                 </div>
@@ -130,6 +123,7 @@
     gap: 10px;
     margin-top: 8px;
 }
+
 .crop-option {
     display: flex;
     flex-direction: column;
@@ -142,18 +136,23 @@
     transition: all 0.2s;
     text-align: center;
 }
+
 .crop-option:hover {
     border-color: var(--primary);
     background: rgba(34,197,94,0.08);
     transform: translateY(-2px);
 }
+
 .crop-option.selected {
     border-color: var(--primary);
     background: rgba(34,197,94,0.15);
     box-shadow: 0 0 15px rgba(34,197,94,0.3);
 }
+
 @media (max-width: 600px) {
-    .crop-grid { grid-template-columns: repeat(3, 1fr); }
+    .crop-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 </style>
 
@@ -167,11 +166,12 @@ const villageSelect = document.getElementById('village');
 
 function populateSelect(selectElem, options, selectedVal) {
     selectElem.innerHTML = '';
-    if(options.length === 0) {
+    if (options.length === 0) {
         selectElem.innerHTML = '<option value="">-- None --</option>';
         return;
     }
-    options.forEach(opt => {
+
+    options.forEach((opt) => {
         const option = document.createElement('option');
         option.value = opt;
         option.textContent = opt;
@@ -183,74 +183,83 @@ function populateSelect(selectElem, options, selectedVal) {
 async function initDropdowns() {
     districtSelect.innerHTML = '<option>Loading...</option>';
     const res = await fetch('/api/locations/districts');
-    let districts = await res.json();
+    const districts = await res.json();
     populateSelect(districtSelect, districts, '{{ current_user.district }}');
-    
+
     districtSelect.addEventListener('change', async () => {
         mandalSelect.innerHTML = '<option>Loading...</option>';
         villageSelect.innerHTML = '<option>Loading...</option>';
-        const d = districtSelect.value;
-        if (!d) return;
-        const res = await fetch(`/api/locations/mandals?district=${d}`);
-        const mandals = await res.json();
-        
+        const district = districtSelect.value;
+        if (!district) return;
+
+        const mandalResponse = await fetch(`/api/locations/mandals?district=${district}`);
+        const mandals = await mandalResponse.json();
         populateSelect(mandalSelect, mandals, '{{ current_user.mandal }}');
         mandalSelect.dispatchEvent(new Event('change'));
     });
 
     mandalSelect.addEventListener('change', async () => {
-        const d = districtSelect.value;
-        const m = mandalSelect.value;
-        if (!m) return;
+        const district = districtSelect.value;
+        const mandal = mandalSelect.value;
+        if (!mandal) return;
+
         villageSelect.innerHTML = '<option>Loading...</option>';
-        const res = await fetch(`/api/locations/villages?district=${d}&mandal=${m}`);
-        const villages = await res.json();
+        const villageResponse = await fetch(`/api/locations/villages?district=${district}&mandal=${mandal}`);
+        const villages = await villageResponse.json();
         populateSelect(villageSelect, villages, '{{ current_user.village }}');
     });
 
     districtSelect.dispatchEvent(new Event('change'));
 }
+
 initDropdowns();
 
-let currentStep = 1;
 let selectedCrop = '';
 
 function nextStep(from) {
-    if (from === 1) {
-        if (!document.getElementById('village').value.trim()) {
-            alert('Please enter your village name.'); return;
-        }
+    if (from === 1 && !document.getElementById('village').value.trim()) {
+        alert('Please choose your village.');
+        return;
     }
-    if (from === 2) {
-        if (!selectedCrop) { alert('Please select a crop.'); return; }
+
+    if (from === 2 && !selectedCrop) {
+        alert('Please select a crop.');
+        return;
     }
+
     if (from === 3) {
         const area = document.getElementById('area_acres').value;
-        if (!area || area <= 0) { alert('Please enter a valid area.'); return; }
-        // Populate review
+        if (!area || area <= 0) {
+            alert('Please enter a valid area.');
+            return;
+        }
+
         document.getElementById('rev_village').textContent = document.getElementById('village').value;
         document.getElementById('rev_district').textContent = document.getElementById('district').value;
         document.getElementById('rev_crop').textContent = selectedCrop;
-        document.getElementById('rev_area').textContent = area + ' acres';
+        document.getElementById('rev_area').textContent = `${area} acres`;
         document.getElementById('rev_season').textContent = document.getElementById('season').value;
         document.getElementById('rev_year').textContent = document.getElementById('year').value;
     }
+
     goToStep(from + 1);
 }
 
-function prevStep(from) { goToStep(from - 1); }
+function prevStep(from) {
+    goToStep(from - 1);
+}
 
 function goToStep(step) {
-    document.querySelectorAll('.form-step').forEach(el => el.style.display = 'none');
-    document.getElementById('step' + step).style.display = 'block';
-    currentStep = step;
+    document.querySelectorAll('.form-step').forEach((el) => {
+        el.style.display = 'none';
+    });
+    document.getElementById(`step${step}`).style.display = 'block';
     updateStepIndicators(step);
 }
 
 function updateStepIndicators(active) {
-    for (let i = 1; i <= 4; i++) {
-        const num = document.getElementById('stepNum' + i);
-        const lbl = document.getElementById('stepLabel' + i);
+    for (let i = 1; i <= 4; i += 1) {
+        const num = document.getElementById(`stepNum${i}`);
         if (i < active) {
             num.style.background = 'var(--primary)';
             num.style.borderColor = 'var(--primary)';
@@ -273,7 +282,7 @@ function updateStepIndicators(active) {
 function selectCrop(crop) {
     selectedCrop = crop;
     document.getElementById('crop_name').value = crop;
-    document.querySelectorAll('.crop-option').forEach(el => {
+    document.querySelectorAll('.crop-option').forEach((el) => {
         el.classList.toggle('selected', el.dataset.crop === crop);
     });
 }

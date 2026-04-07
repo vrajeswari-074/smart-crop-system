@@ -164,6 +164,7 @@
         '#22c55e','#84cc16','#f59e0b','#f87171','#60a5fa',
         '#a78bfa','#fb923c','#34d399','#fbbf24','#4ade80'
     ];
+    const isMobile = window.innerWidth <= 768;
     new Chart(document.getElementById('globalDistChart'), {
         type: 'doughnut',
         data: {
@@ -181,8 +182,8 @@
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'right',
-                    labels: { color: '#f0fdf4', font: { size: 12 }, padding: 12 }
+                    position: isMobile ? 'bottom' : 'right',
+                    labels: { color: '#f0fdf4', font: { size: isMobile ? 10 : 12 }, padding: isMobile ? 10 : 12, boxWidth: isMobile ? 10 : 14 }
                 },
                 tooltip: {
                     callbacks: {

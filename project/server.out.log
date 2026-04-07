@@ -1,3 +1,3 @@
-[ML] Could not auto-train: [WinError 5] Access is denied
+[ML] Model trained. MAE=Rs 209, R2=0.972
  * Serving Flask app 'app'
  * Debug mode: off

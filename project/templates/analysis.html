@@ -143,7 +143,7 @@
             <div class="card-title">🚨 Over-cultivation Detection</div>
             <div class="card-subtitle">Crops exceeding 40% of village area are flagged as over-cultivated</div>
         </div>
-        <a href="{{ url_for('crops.recommend') }}?village={{ village }}&season={{ season }}&region={{ current_user.region }}"
+        <a href="{{ url_for('crops.recommend') }}?village={{ village }}&season={{ season }}&district={{ current_user.district }}"
            class="btn btn-primary btn-sm">Get Recommendations →</a>
     </div>
 
@@ -208,6 +208,8 @@
     const data    = {{ distribution | map(attribute='area') | list | tojson }};
     const palette = ['#22c55e','#84cc16','#f59e0b','#f87171','#60a5fa','#a78bfa','#fb923c','#34d399','#fbbf24','#4ade80'];
 
+    const isMobile = window.innerWidth <= 768;
+
     // Pie chart
     new Chart(document.getElementById('pieChart'), {
         type: 'pie',
@@ -216,7 +218,7 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position:'right', labels: { color:'#f0fdf4', font:{ size:12 }, padding:12 } },
+                legend: { position: isMobile ? 'bottom' : 'right', labels: { color:'#f0fdf4', font:{ size:isMobile ? 10 : 12 }, padding:isMobile ? 10 : 12, boxWidth:isMobile ? 10 : 14 } },
                 tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed.toFixed(1)} acres` } }
             }
         }
@@ -240,8 +242,8 @@
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { ticks: { color:'#86efac', font:{ size:11 } }, grid: { color:'rgba(34,197,94,0.07)' } },
-                y: { ticks: { color:'#86efac', font:{ size:11 } }, grid: { color:'rgba(34,197,94,0.07)' }, beginAtZero: true }
+                x: { ticks: { color:'#86efac', font:{ size:isMobile ? 10 : 11 } }, grid: { color:'rgba(34,197,94,0.07)' } },
+                y: { ticks: { color:'#86efac', font:{ size:isMobile ? 10 : 11 } }, grid: { color:'rgba(34,197,94,0.07)' }, beginAtZero: true }
             },
             plugins: {
                 legend: { display:false },

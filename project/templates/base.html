@@ -13,7 +13,6 @@
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
 <div class="app-wrapper">
-    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-logo">
             <a href="{{ url_for('dashboard.index') }}" class="logo-mark">
@@ -60,15 +59,13 @@
 
             <div class="nav-section">
                 <div class="nav-section-label">Intelligence</div>
-                <a href="{{ url_for('crops.recommend') }}" class="nav-item {% if request.endpoint == 'crops.recommend' %}active{% endif %}">
-                <span class="nav-icon">💡</span>
-                AI Recommendations
-            </a>
-            <a href="{{ url_for('analytics.district_analytics') }}" class="nav-item {% if request.endpoint == 'analytics.district_analytics' %}active{% endif %}">
-                <span class="nav-icon">📊</span>
-                District Analytics
-            </a>
-            <a href="{{ url_for('crops.predict') }}" class="nav-item {% if request.endpoint == 'crops.predict' %}active{% endif %}">
+                <a href="{{ url_for('crops.recommend') }}" class="nav-link {% if request.endpoint == 'crops.recommend' %}active{% endif %}">
+                    <span class="nav-icon">💡</span> AI Recommendations
+                </a>
+                <a href="{{ url_for('analytics.district_analytics') }}" class="nav-link {% if request.endpoint == 'analytics.district_analytics' %}active{% endif %}">
+                    <span class="nav-icon">📊</span> District Analytics
+                </a>
+                <a href="{{ url_for('crops.predict') }}" class="nav-link {% if request.endpoint == 'crops.predict' %}active{% endif %}">
                     <span class="nav-icon">📈</span> Price Prediction
                 </a>
             </div>
@@ -83,24 +80,22 @@
         </div>
     </aside>
 
-    <!-- Main Content -->
     <div class="main-content">
         <header class="topbar">
-            <div style="display:flex;align-items:center;gap:16px;">
-                <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">☰</button>
+            <div class="topbar-heading">
+                <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()" aria-label="Toggle menu" aria-controls="sidebar" aria-expanded="false">☰</button>
                 <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
             </div>
             <div class="topbar-actions">
                 <a href="{{ url_for('crops.submit') }}" class="topbar-btn">
                     ➕ Add Entry
                 </a>
-                <a href="{{ url_for('crops.recommend') }}" class="topbar-btn btn-primary" style="color:#000;">
+                <a href="{{ url_for('crops.recommend') }}" class="topbar-btn btn-primary topbar-btn-primary">
                     🤖 Get Recommendations
                 </a>
             </div>
         </header>
 
-        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="flash-container" id="flashContainer">
@@ -121,21 +116,75 @@
 </div>
 
 <script>
+const body = document.body;
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+const menuToggle = document.getElementById('menuToggle');
+const sidebarLinks = sidebar ? Array.from(sidebar.querySelectorAll('a[href]')) : [];
+
+function setSidebarState(isOpen) {
+    sidebar.classList.toggle('open', isOpen);
+    overlay.classList.toggle('active', isOpen);
+    body.classList.toggle('sidebar-open', isOpen);
+    if (menuToggle) {
+        menuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+}
+
 function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('open');
-    document.getElementById('overlay').classList.toggle('active');
+    setSidebarState(!sidebar.classList.contains('open'));
 }
+
 function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('overlay').classList.remove('active');
+    setSidebarState(false);
 }
-// Auto-dismiss flash messages after 4s
+
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+        closeSidebar();
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closeSidebar();
+    }
+});
+
+sidebarLinks.forEach((link) => {
+    link.addEventListener('click', (event) => {
+        if (window.innerWidth > 768) {
+            return;
+        }
+
+        const href = link.getAttribute('href');
+        const isHash = href && href.startsWith('#');
+        const isModified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+
+        if (!href || isHash || isModified) {
+            closeSidebar();
+            return;
+        }
+
+        event.preventDefault();
+        closeSidebar();
+        window.setTimeout(() => {
+            window.location.href = href;
+        }, 180);
+    });
+});
+
 setTimeout(() => {
     const container = document.getElementById('flashContainer');
     if (container) {
         const msgs = container.querySelectorAll('.flash-msg');
         msgs.forEach((m, i) => {
-            setTimeout(() => { m.style.opacity = '0'; m.style.transform = 'translateX(30px)'; m.style.transition = '0.3s'; setTimeout(() => m.remove(), 300); }, i * 200);
+            setTimeout(() => {
+                m.style.opacity = '0';
+                m.style.transform = 'translateX(30px)';
+                m.style.transition = '0.3s';
+                setTimeout(() => m.remove(), 300);
+            }, i * 200);
         });
     }
 }, 4000);
